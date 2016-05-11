@@ -40,6 +40,8 @@
 
 #include <gdk/gdkx.h>
 
+#include <time.h>
+
 #define ANIMATION_UP 0
 #define ANIMATION_DOWN 1
 
@@ -161,7 +163,8 @@ void tilda_window_set_active (tilda_window *tw)
     {
         guint32 timestamp = gtk_get_current_event_time ();
         if (timestamp == 0) {
-            timestamp = gdk_x11_get_server_time(gdk_screen_get_root_window (screen));
+			timestamp = time(NULL);
+            //timestamp = gdk_x11_get_server_time(gdk_screen_get_root_window (screen));
         }
         event.xclient.type = ClientMessage;
         event.xclient.serial = 0;
@@ -178,6 +181,7 @@ void tilda_window_set_active (tilda_window *tw)
         event.xclient.data.l[4] = 0;
 
         XSendEvent (x11_display, x11_root_window, False, mask, &event);
+        move_and_resize(tw);
     }
     else
     {
@@ -199,6 +203,25 @@ static void process_all_pending_gtk_events ()
      * look a little smoother. However, it probably does increase the load
      * on the X server. */
     gdk_flush ();
+}
+
+void move_and_resize(struct tilda_window_ *tw)
+{   
+	gtk_window_move (GTK_WINDOW(tw->window), 0, 16);
+	process_all_pending_gtk_events ();
+	GdkScreen *screen = gtk_widget_get_screen (tw->window);
+	
+	gint monitor = -1;
+	gint x,y;
+	GdkWindow *window = gtk_widget_get_window(tw->window);
+	g_usleep (10000);
+	gdk_window_get_origin(window, &x, &y);
+	monitor = gdk_screen_get_monitor_at_point(screen, x, y);
+    GdkRectangle rectangle;
+    gdk_screen_get_monitor_geometry (screen, monitor, &rectangle);
+	gtk_window_resize (GTK_WINDOW(tw->window), rectangle.width, rectangle.height / 2);
+	process_all_pending_gtk_events();
+	gtk_window_move(GTK_WINDOW(tw->window), 0, 16);
 }
 
 /**
